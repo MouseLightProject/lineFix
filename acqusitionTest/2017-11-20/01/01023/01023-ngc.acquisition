@@ -1,0 +1,9 @@
+x_mm: 62.394
+y_mm: 51.0362
+z_mm: 17.389692
+current_lattice_position {
+  x: 191
+  y: 128
+  z: 1790
+}
+cut_count: 1790
