@@ -4,6 +4,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import sys, getopt
+import cv2
+
 
 def findShift(img,st=-9,en=10):
     pimg = np.max(img,axis=0)
@@ -15,8 +17,6 @@ def findShift(img,st=-9,en=10):
     for iter,shift in enumerate(searchinterval):
         corr = im1*np.roll(im2,shift,axis=1)#/np.linalg.norm(im1)/np.linalg.norm(im2)
         norms[0,iter] = np.linalg.norm(corr)/np.linalg.norm(im1)/np.linalg.norm(im1)
-        # io.imsave('/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix/test/{0}.tif'.format(shift),np.uint8(255*corr))
-
     # plt.figure()
     # plt.plot(searchinterval, norms.T, 'r+')
 
@@ -72,30 +72,33 @@ def findShift3D(img,st=-10,en=10):
     return searchinterval[np.argmax(norms)]
 
 def main(argv):
+    thumb = True
+    inputfolder = None #
     inputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
     outputfolder = None
+    saveout = False
     try:
         opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
     except getopt.GetoptError:
-        print('test.py -i <inputfile> -o <outputfile>')
+        print('linefix.py -i <inputfile> -o <outputfile>')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print('test.py -i <inputfile> -o <outputfile>')
+            print('linefix.py -i <inputfile> -o <outputfile>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfolder = arg
         elif opt in ("-o", "--ofile"):
             outputfolder = arg
 
+    if inputfolder==None:
+        print('linefix.py -i <inputfile> -o <outputfile>')
+        sys.exit(2)
+
     if outputfolder==None:
         outputfolder = inputfolder
-
-    # finds shift between odd and even lines
-    # tif tiles in folder
-    # outfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix/out"
-
+        saveout = True
     results = [each for each in os.listdir(inputfolder) if each.endswith('.tif')]
     # read image
     imgori = io.imread(inputfolder+"/"+results[0])
@@ -103,14 +106,32 @@ def main(argv):
     # beta correction
     img = img** (1 / 2.2)
     dims = np.int64(np.shape(img))
-    shift = findShift(img)
+    st = -9
+    en = 10
+    shift = findShift(img,st,en)
+
     with open(outputfolder+'/Xlineshift.txt', 'w') as f:
         f.write('{0:d}'.format(shift))
-    # overwrite images
-    for res in results:
-        img = io.imread(inputfolder + "/" + res)
-        img[:,1::2,:] =  np.roll(img[:,1::2,:], shift, axis=2)
-        io.imsave(outputfolder+"/"+res,img)
+        if thumb:
+            cmap = plt.get_cmap('seismic',en-st)
+            col = cmap(shift-st)
+            thumbim = np.ones((89,105,3),dtype=np.uint8)
+            col = tuple(c * 255 for c in col)
+            thumbim[:] = col[:3]
+            io.imsave(outputfolder + "/Thumbs.png", thumbim)
+
+    #sizes = [(120, 120), (720, 720), (1600, 1600)]
+    # for size in sizes:
+    #     resized_image = cv2.resize(image, size)
+    #     cv2.imwrite("thumbnail_%d.jpg" % size[0], resized_image)
+
+
+    if saveout:
+        # overwrite images
+        for res in results:
+            img = io.imread(inputfolder + "/" + res)
+            img[:,1::2,:] =  np.roll(img[:,1::2,:], shift, axis=2)
+            io.imsave(outputfolder+"/"+res,img)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
