@@ -80,12 +80,12 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
     except getopt.GetoptError:
-        print('linefix.py -i <inputfile> -o <outputfile>')
+        print('linefix.py -i <inputfolder> -o <outputfolder>')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print('linefix.py -i <inputfile> -o <outputfile>')
+            print('linefix.py -i <inputfolder> -o <outputfolder>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfolder = arg
@@ -93,7 +93,7 @@ def main(argv):
             outputfolder = arg
 
     if inputfolder==None:
-        print('linefix.py -i <inputfile> -o <outputfile>')
+        print('linefix.py -i <inputfolder> -o <outputfolder>')
         sys.exit(2)
 
     if outputfolder==None:
