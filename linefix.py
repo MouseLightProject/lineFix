@@ -115,7 +115,7 @@ def main(argv):
         if thumb:
             cmap = plt.get_cmap('seismic',en-st)
             col = cmap(shift-st)
-            thumbim = np.ones((89,105,3),dtype=np.uint8)
+            thumbim = np.ones((105,89,3),dtype=np.uint8)
             col = tuple(c * 255 for c in col)
             thumbim[:] = col[:3]
             io.imsave(outputfolder + "/Thumbs.png", thumbim)
