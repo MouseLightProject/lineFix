@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import sys, getopt
+from scipy.interpolate import interp1d
 import cv2
 
 
@@ -16,11 +17,17 @@ def findShift(img,st=-9,en=10):
 
     for iter,shift in enumerate(searchinterval):
         corr = im1*np.roll(im2,shift,axis=1)#/np.linalg.norm(im1)/np.linalg.norm(im2)
-        norms[0,iter] = np.linalg.norm(corr)/np.linalg.norm(im1)/np.linalg.norm(im1)
-    # plt.figure()
-    # plt.plot(searchinterval, norms.T, 'r+')
+        norms[0,iter] = np.linalg.norm(corr)/np.linalg.norm(im1)/np.linalg.norm(im2)
 
-    return searchinterval[np.argmax(norms)]
+    xp = np.linspace(st,en-1, num=1000, endpoint=True)
+    f2 = interp1d(searchinterval, norms.flatten(), kind='cubic')
+    shiftval = xp[np.argmax(f2(xp))]
+
+    plt.figure()
+    plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
+    # return searchinterval[np.argmax(norms)]
+    return int(np.round(shiftval)),shiftval
+
 
 def sliceByFix(img):
     corrslices=np.zeros((img.shape[0],5))
@@ -60,21 +67,28 @@ def sliceByFix(img):
     return corrslices
 
 def findShift3D(img,st=-10,en=10):
-    im1 = img[::2]
-    im2 = img[1::2]
-    if im1.shape[0]>im2.shape[0]:
-        im1 = np.delete(im1,im1.shape[0]-1,0)
+    im1 = img[:,::2,:]
+    im2 = img[:,1::2,:]
+    if im1.shape[1]>im2.shape[1]:
+        im1 = np.delete(im1,im1.shape[1]-1,1)
     norms=np.zeros((1,en-st))
     searchinterval = range(st,en)
     for iter,shift in enumerate(searchinterval):
-        corr = im1*np.roll(im2,shift,axis=1)#/np.linalg.norm(im1)/np.linalg.norm(im2)
+        corr = im1*np.roll(im2,shift,axis=2)#/np.linalg.norm(im1)/np.linalg.norm(im2)
         norms[0,iter] = np.linalg.norm(corr)/np.linalg.norm(im1)/np.linalg.norm(im1)
-    return searchinterval[np.argmax(norms)]
+
+    xp = np.linspace(st,en-1, num=1000, endpoint=True)
+    f2 = interp1d(searchinterval, norms.flatten(), kind='cubic')
+    shiftval = xp[np.argmax(f2(xp))]
+    # plt.figure()
+    # plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
+    # return searchinterval[np.argmax(norms)]
+    return int(np.round(shiftval)),shiftval
 
 def main(argv):
     thumb = True
     inputfolder = None #
-    inputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
+    inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/2017-10-31/Tiling/2017-11-02/01/01190"
     outputfolder = None
     saveout = False
     try:
@@ -108,7 +122,10 @@ def main(argv):
     dims = np.int64(np.shape(img))
     st = -9
     en = 10
-    shift = findShift(img,st,en)
+    shift,shift_float = findShift(img,st,en)
+    # check if shift is closer to halfway. 0.4<|shift-round(shift)|<0.6
+    if np.abs(np.abs(np.round(shift_float,2)-np.round(shift_float,0))-.5)<.1:
+        shift, shift_float = findShift3D(img,st,en)
 
     with open(outputfolder+'/Xlineshift.txt', 'w') as f:
         f.write('{0:d}'.format(shift))
