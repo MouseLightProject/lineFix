@@ -9,8 +9,13 @@ import cv2
 
 def findShift(img,st=-9,en=10,isdeployed=False):
     pimg = np.max(img,axis=0)
-    im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
-    im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
+    if False:
+        im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
+        im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
+    else:
+        im1 = pimg[::2]
+        im2 = pimg[1::2]
+
     norms=np.zeros((1,en-st))
     searchinterval = range(st,en)
 
@@ -24,7 +29,10 @@ def findShift(img,st=-9,en=10,isdeployed=False):
 
     if not isdeployed:
         plt.figure(); plt.imshow(im1)
-        plt.figure(); plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
+        plt.figure();
+        plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
+        plt.title(shiftval)
+
     # return searchinterval[np.argmax(norms)]
     return int(np.round(shiftval)),shiftval
 
@@ -80,19 +88,17 @@ def findShift3D(img,st=-10,en=10):
     xp = np.linspace(st,en-1, num=1000, endpoint=True)
     f2 = interp1d(searchinterval, norms.flatten(), kind='cubic')
     shiftval = xp[np.argmax(f2(xp))]
-    # plt.figure()
-    # plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
-    # return searchinterval[np.argmax(norms)]
     return int(np.round(shiftval)),shiftval
 
 def main(argv):
     thumb = True
+    isdeployed = True
+
     inputfolder = None #
     inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/2017-10-31/Tiling/2017-11-02/01/01190"
-    inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
+    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
     outputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
     saveout = False
-    isdeployed = True
 
     if isdeployed:
         saveout = True
@@ -128,7 +134,7 @@ def main(argv):
     dims = np.int64(np.shape(img))
     st = -9
     en = 10
-    shift,shift_float = findShift(img,st,en,isdeployed)
+    shift,shift_float = findShift(img,st,en,False)
     # check if shift is closer to halfway. 0.4<|shift-round(shift)|<0.6
     if np.abs(np.abs(np.round(shift_float,2)-np.round(shift_float,0))-.5)<.1:
         shift, shift_float = findShift3D(img,st,en)
