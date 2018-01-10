@@ -9,12 +9,8 @@ import cv2
 
 def findShift(img,st=-9,en=10,isdeployed=False):
     pimg = np.max(img,axis=0)
-    if False:
-        im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
-        im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
-    else:
-        im1 = pimg[::2]
-        im2 = pimg[1::2]
+    im1 = pimg[::2]
+    im2 = pimg[1::2]
 
     norms=np.zeros((1,en-st))
     searchinterval = range(st,en)
@@ -131,10 +127,11 @@ def main(argv):
     img = imgori/2**16
     # beta correction
     img = img** (1 / 2.2)
-    dims = np.int64(np.shape(img))
+    # binarize it to eliminate spatial non-uniformity bias
+    img = np.asarray(np.tanh(img[::2])>.5,np.float)
     st = -9
     en = 10
-    shift,shift_float = findShift(img,st,en,False)
+    shift,shift_float = findShift(img,st,en,isdeployed)
     # check if shift is closer to halfway. 0.4<|shift-round(shift)|<0.6
     if np.abs(np.abs(np.round(shift_float,2)-np.round(shift_float,0))-.5)<.1:
         shift, shift_float = findShift3D(img,st,en)
