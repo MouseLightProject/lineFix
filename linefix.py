@@ -1,5 +1,7 @@
 from skimage import data, io, filters,transform
 from scipy import misc
+from shutil import copyfile, copy2
+
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,8 +11,12 @@ import cv2
 
 def findShift(img,st=-9,en=10,isdeployed=False):
     pimg = np.max(img,axis=0)
-    im1 = pimg[::2]
-    im2 = pimg[1::2]
+    if False:
+        im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
+        im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
+    else:
+        im1 = pimg[::2]
+        im2 = pimg[1::2]
 
     norms=np.zeros((1,en-st))
     searchinterval = range(st,en)
@@ -89,12 +95,12 @@ def findShift3D(img,st=-10,en=10):
 def main(argv):
     thumb = True
     isdeployed = True
-
     inputfolder = None #
-    inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/2017-10-31/Tiling/2017-11-02/01/01190"
-    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
-    outputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
+    outputfolder = None #
     saveout = False
+    # inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2018-08-15/2018-08-18/00/00466"
+    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
+    # outputfolder = "/nrs/mouselight/pipeline_output/2018-08-15/stage_1_line_fix_output/2018-08-18/00/00466"
 
     if isdeployed:
         saveout = True
@@ -122,6 +128,7 @@ def main(argv):
         outputfolder = inputfolder
         saveout = True
     results = [each for each in os.listdir(inputfolder) if each.endswith('.tif')]
+    results.sort()
     # read image
     imgori = io.imread(inputfolder+"/"+results[0])
     img = imgori/2**16
@@ -158,6 +165,12 @@ def main(argv):
             img = io.imread(inputfolder + "/" + res)
             img[:,1::2,:] =  np.roll(img[:,1::2,:], shift, axis=2)
             io.imsave(outputfolder+"/"+res,img)
+        # copy any non image meta-files
+        results = [each for each in os.listdir(inputfolder) if not each.endswith('.tif')]
+        for res in results:
+            copy2(inputfolder + "/" + res,outputfolder + "/" + res)
+
+
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
