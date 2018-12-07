@@ -99,8 +99,8 @@ def main(argv):
     outputfolder = None #
     saveout = False
     # inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2018-08-15/2018-08-18/00/00466"
-    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
-    # outputfolder = "/nrs/mouselight/pipeline_output/2018-08-15/stage_1_line_fix_output/2018-08-18/00/00466"
+    inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2018-10-01/2018-10-04/02/02167'
+    outputfolder = "/nrs/mouselight/pipeline_output/2018-08-01/stage_1_line_fix_output/2018-08-10/02/02167"
 
     if isdeployed:
         saveout = True
@@ -152,12 +152,6 @@ def main(argv):
             col = tuple(c * 255 for c in col)
             thumbim[:] = col[:3]
             io.imsave(outputfolder + "/Thumbs.png", thumbim)
-
-    #sizes = [(120, 120), (720, 720), (1600, 1600)]
-    # for size in sizes:
-    #     resized_image = cv2.resize(image, size)
-    #     cv2.imwrite("thumbnail_%d.jpg" % size[0], resized_image)
-
 
     if saveout:
         # overwrite images
