@@ -1,7 +1,5 @@
 from skimage import data, io, filters,transform
 from scipy import misc
-from shutil import copyfile, copy2
-
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -98,9 +96,10 @@ def main(argv):
     inputfolder = None #
     outputfolder = None #
     saveout = False
-    # inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2018-08-15/2018-08-18/00/00466"
-    inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2018-10-01/2018-10-04/02/02167'
-    outputfolder = "/nrs/mouselight/pipeline_output/2018-08-01/stage_1_line_fix_output/2018-08-10/02/02167"
+
+    # inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/2017-10-31/Tiling/2017-11-02/01/01190"
+    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
+    # outputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
 
     if isdeployed:
         saveout = True
@@ -128,12 +127,14 @@ def main(argv):
         outputfolder = inputfolder
         saveout = True
     results = [each for each in os.listdir(inputfolder) if each.endswith('.tif')]
-    results.sort()
+
     # read image
-    imgori = io.imread(inputfolder+"/"+results[0])
+    imgori = io.imread(inputfolder+"/"+results[0]) ## TF: results[0]: channel 0, results[1]: channel 1
     img = imgori/2**16
-    # beta correction
+	
+    # gamma correction
     img = img** (1 / 2.2)
+	
     # binarize it to eliminate spatial non-uniformity bias
     img = np.asarray(np.tanh(img[::2])>.5,np.float)
     st = -9
@@ -159,10 +160,7 @@ def main(argv):
             img = io.imread(inputfolder + "/" + res)
             img[:,1::2,:] =  np.roll(img[:,1::2,:], shift, axis=2)
             io.imsave(outputfolder+"/"+res,img)
-        # copy any non image meta-files
-        results = [each for each in os.listdir(inputfolder) if not each.endswith('.tif')]
-        for res in results:
-            copy2(inputfolder + "/" + res,outputfolder + "/" + res)
+
 
 
 
