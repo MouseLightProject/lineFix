@@ -1,20 +1,29 @@
-from skimage import data, io, filters,transform
-from scipy import misc
 import os
-import matplotlib.pyplot as plt
+import sys
+import getopt
 import numpy as np
-import sys, getopt
+from skimage import io
+from skimage import transform
+import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-import cv2
+import re
+
+
+
+def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
+    return [int(text) if text.isdigit() else text.lower()
+            for text in _nsre.split(s)]
+
+
 
 def findShift(img,st=-9,en=10,isdeployed=False):
     pimg = np.max(img,axis=0)
-    if False:
-        im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
-        im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
-    else:
-        im1 = pimg[::2]
-        im2 = pimg[1::2]
+    # if False:
+    #     im1 = np.asarray(np.tanh(pimg[::2])>.5,np.float)
+    #     im2 = np.asarray(np.tanh(pimg[1::2])>.5,np.float)
+    # else:
+    im1 = pimg[::2]
+    im2 = pimg[1::2]
 
     norms=np.zeros((1,en-st))
     searchinterval = range(st,en)
@@ -28,13 +37,15 @@ def findShift(img,st=-9,en=10,isdeployed=False):
     shiftval = xp[np.argmax(f2(xp))]
 
     if not isdeployed:
-        plt.figure(); plt.imshow(im1)
-        plt.figure();
+        plt.figure()
+        plt.imshow(im1)
+        plt.figure()
         plt.plot(searchinterval, norms.T, 'r+',xp, f2(xp), 'g-')
         plt.title(shiftval)
 
     # return searchinterval[np.argmax(norms)]
     return int(np.round(shiftval)),shiftval
+
 
 
 def sliceByFix(img):
@@ -74,6 +85,8 @@ def sliceByFix(img):
             corrslices[iter,rl+2] = corr
     return corrslices
 
+
+
 def findShift3D(img,st=-10,en=10):
     im1 = img[:,::2,:]
     im2 = img[:,1::2,:]
@@ -90,46 +103,81 @@ def findShift3D(img,st=-10,en=10):
     shiftval = xp[np.argmax(f2(xp))]
     return int(np.round(shiftval)),shiftval
 
+
+
+def neurons_channel_index_from_file_lines(file_lines):
+    for file_line in file_lines:
+        tokens = file_line.split(':')
+        if len(tokens) >= 2 :
+            channel_index_as_string = tokens[0].strip()
+            channel_semantics_as_string = tokens[1].strip()
+            if channel_semantics_as_string == 'neurons':
+                result = int(channel_index_as_string)
+                return result
+    raise RuntimeError('Unable to determine the index of the neurons channel')
+
+
+
 def main(argv):
     thumb = True
     isdeployed = True
-    inputfolder = None #
-    outputfolder = None #
-    saveout = False
-
-    # inputfolder = "/groups/mousebrainmicro/mousebrainmicro/data/2017-10-31/Tiling/2017-11-02/01/01190"
-    # inputfolder = '/groups/mousebrainmicro/mousebrainmicro/data/acquisition/2017-12-19/2017-12-27/00/00476'
-    # outputfolder = "/groups/mousebrainmicro/home/base/CODE/MOUSELIGHT/lineScanFix"
+    input_root_folder = None
+    output_root_folder = None
+    tile_relative_path = None
+    do_write_output_tif_stacks = False
 
     if isdeployed:
-        saveout = True
+        do_write_output_tif_stacks = True
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
+        opts, args = getopt.getopt(argv, "hi:o:p:", ["ifile=", "ofile=", "path="])
     except getopt.GetoptError:
-        print('linefix.py -i <inputfolder> -o <outputfolder>')
+        print('lineFix.py -i <input_root_folder> -p <tile path> -o <output_root_folder>')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print('linefix.py -i <inputfolder> -o <outputfolder>')
+            print('lineFix.py -i <input_root_folder> -p <tile path> -o <output_root_folder>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
-            inputfolder = arg
+            input_root_folder = arg
         elif opt in ("-o", "--ofile"):
-            outputfolder = arg
+            output_root_folder = arg
+        elif opt in ("-p", "--path"):
+            tile_relative_path = arg
 
-    if inputfolder==None:
-        print('linefix.py -i <inputfolder> -o <outputfolder>')
+    if input_root_folder==None:
+        print('lineFix.py -i <input_root_folder> -p <tile path> -o <output_root_folder>')
         sys.exit(2)
 
-    if outputfolder==None:
-        outputfolder = inputfolder
-        saveout = True
-    results = [each for each in os.listdir(inputfolder) if each.endswith('.tif')]
+    if tile_relative_path==None:
+        print('lineFix.py -i <input_root_folder> -p <tile path> -o <output_root_folder>')
+        sys.exit(2)
+
+    if output_root_folder==None:
+        print('lineFix.py -i <input_root_folder> -p <tile path> -o <output_root_folder>')
+        sys.exit(2)
+
+    # Figure out which channel we'll use to compute the line shift
+    channel_semantics_file_path = os.path.join(input_root_folder, 'channel-semantics.txt')
+    with open(channel_semantics_file_path) as f:
+        channel_semantics_lines = list(f)
+    neurons_channel_index = neurons_channel_index_from_file_lines(channel_semantics_lines)
+
+    # Construct absolute paths to input, output folder for this tile
+    input_folder_path = os.path.join(input_root_folder, tile_relative_path)
+    output_folder_path = os.path.join(output_root_folder, tile_relative_path)
+    tile_base_name = os.path.basename(tile_relative_path)
+
+    # # Get the list of tif files in the input folder
+    # unsorted_tif_file_names = [file_name for file_name in os.listdir(input_folder_path) if file_name.endswith('.tif')]
+    # tif_file_names = sorted(unsorted_tif_file_names, key=natural_sort_key)
 
     # read image
-    imgori = io.imread(inputfolder+"/"+results[0]) ## TF: results[0]: channel 0, results[1]: channel 1
+    #neurons_channel_tif_file_name = tif_file_names[neurons_channel_index]
+    neurons_channel_tif_file_name = tile_base_name + '-ngc.' + str(neurons_channel_index) + '.tif'
+    neurons_channel_tif_file_path = os.path.join(input_folder_path, neurons_channel_tif_file_name)
+    imgori = io.imread(neurons_channel_tif_file_path)
     img = imgori/2**16
 	
     # gamma correction
@@ -144,23 +192,33 @@ def main(argv):
     if np.abs(np.abs(np.round(shift_float,2)-np.round(shift_float,0))-.5)<.1:
         shift, shift_float = findShift3D(img,st,en)
 
-    with open(outputfolder+'/Xlineshift.txt', 'w') as f:
+    # Make sure the output folder exists
+    os.makedirs(output_folder_path, exist_ok=True)
+
+    # Write the Xlineshift.txt file
+    xlineshift_file_path = os.path.join(output_folder_path, 'Xlineshift.txt')
+    with open(xlineshift_file_path, 'w') as f:
         f.write('{0:d}'.format(shift))
-        if thumb:
-            cmap = plt.get_cmap('seismic',en-st)
-            col = cmap(shift-st)
-            thumbim = np.ones((105,89,3),dtype=np.uint8)
-            col = tuple(c * 255 for c in col)
-            thumbim[:] = col[:3]
-            io.imsave(outputfolder + "/Thumbs.png", thumbim)
 
-    if saveout:
-        # overwrite images
-        for res in results:
-            img = io.imread(inputfolder + "/" + res)
+    # Write the thumbnail, maybe
+    if thumb:
+        cmap = plt.get_cmap('seismic',en-st)
+        col = cmap(shift-st)
+        thumbim = np.ones((105,89,3),dtype=np.uint8)
+        col = tuple(c * 255 for c in col)
+        thumbim[:] = col[:3]
+        thumb_file_path = os.path.join(output_folder_path, 'Thumbs.png')
+        io.imsave(thumb_file_path, thumbim)
+
+    # Write the line-shifted tif stacks, maybe
+    tif_file_names = [file_name for file_name in os.listdir(input_folder_path) if file_name.endswith('.tif')]
+    if do_write_output_tif_stacks:
+        for tif_file_name in tif_file_names:
+            input_tif_file_path = os.path.join(input_folder_path, tif_file_name)
+            output_tif_file_path = os.path.join(output_folder_path, tif_file_name)
+            img = io.imread(input_tif_file_path)
             img[:,1::2,:] =  np.roll(img[:,1::2,:], shift, axis=2)
-            io.imsave(outputfolder+"/"+res,img)
-
+            io.imsave(output_tif_file_path, img)
 
 
 

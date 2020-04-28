@@ -5,3 +5,5 @@
 *.microscope
 *.acquisition
 *.png
+test/
+.idea/workspace.xml
